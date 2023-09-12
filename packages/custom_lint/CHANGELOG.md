@@ -1,3 +1,22 @@
+## Unreleased patch
+
+- Sort lints by severity in the command line (thanks to @kuhnroyal)
+- Fix watch mode not quitting with `q` (thanks to @kuhnroyal)
+- Improve the command line's output (thanks to @kuhnroyal)
+
+## 0.5.3 - 2023-08-29
+
+- The command line now supports ignoring warnings/infos with `--no-fatal-warnings`/`--no-fatal-infos` (thanks to @yamarkz)
+
+## 0.5.2 - 2023-08-16
+
+- Support both analyzer 5.12.0 and 6.0.0 at the same time.
+- Attempt at fixing the windows crash
+
+## 0.5.1 - 2023-08-03
+
+Support analyzer v6
+
 ## 0.5.0 - 2023-06-21
 
 - The command line now shows the lints' severity (thanks to @praxder)
