@@ -15,6 +15,9 @@ Optimized logic for finding an unused VM_service port.
 - Sort lints by severity in the command line (thanks to @kuhnroyal)
 - Fix watch mode not quitting with `q` (thanks to @kuhnroyal)
 - Improve the command line's output (thanks to @kuhnroyal)
+- Update uuid to 4.0.0
+- Fixed a port leak
+- Fix connection issues on Docker/windows (thanks to @hamsbrar)
 
 ## 0.5.3 - 2023-08-29
 

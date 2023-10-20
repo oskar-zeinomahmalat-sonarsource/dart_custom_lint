@@ -162,20 +162,27 @@ class SocketCustomLintServerToClientChannel {
         _tempDirectory = await _workspace.createPluginHostDirectory();
     _writeEntrypoint(_workspace.uniquePluginNames, tempDirectory);
 
-    return _asyncRetry(retryCount: 5, () async {
-      // Using "late" to fetch the port only if needed (in watch mode)
-      late final port = _findPossiblyUnusedPort();
-      final process = await Process.start(
-        Platform.resolvedExecutable,
-        [
-          if (_server.watchMode) '--enable-vm-service=${await port}',
-          join('lib', 'custom_lint_client.dart'),
-          _serverSocket.port.toString(),
-        ],
-        workingDirectory: tempDirectory.path,
-      );
-      return process;
-    });
+    try {
+      return _asyncRetry(retryCount: 5, () async {
+        // Using "late" to fetch the port only if needed (in watch mode)
+        late final port = _findPossiblyUnusedPort();
+        final process = await Process.start(
+          Platform.resolvedExecutable,
+          [
+            if (_server.watchMode) '--enable-vm-service=${await port}',
+            join('lib', 'custom_lint_client.dart'),
+            _serverSocket.address.host,
+            _serverSocket.port.toString(),
+          ],
+          workingDirectory: tempDirectory.path,
+        );
+        return process;
+      });
+    } catch (_) {
+      // If the process failed to start, we can delete the temp directory
+      await _tempDirectory?.delete(recursive: true);
+      rethrow;
+    }
   }
 
   void _writeEntrypoint(
@@ -201,10 +208,12 @@ import 'package:custom_lint_builder/src/channel.dart';
 $imports
 
 void main(List<String> args) async {
-  final port = int.parse(args.single);
+  final host = args[0];
+  final port = int.parse(args[1]);
 
   runSocket(
     port: port,
+    host: host,
     includeBuiltInLints: ${_server.includeBuiltInLints},
     {$plugins},
   );
