@@ -408,8 +408,7 @@ dart pub upgrade dep
 
         // Skip empty lines
         await process.stdout.skip(2);
-        expect(await process.stdout.next, 'Manual Reload...');
-        expect(await process.stdout.next, 'Analyzing...');
+        expect(await process.stdout.next, 'Manual re-lint...');
         await process.stdout.skip(1);
         expect(await process.stdout.next, 'No issues found!');
 
@@ -470,8 +469,7 @@ dart pub upgrade dep
 
         // Skip empty lines
         await process.stdout.skip(2);
-        expect(await process.stdout.next, 'Manual Reload...');
-        expect(await process.stdout.next, 'Analyzing...');
+        expect(await process.stdout.next, 'Manual re-lint...');
         await process.stdout.skip(1);
         expect(
           await process.stdout.next,
