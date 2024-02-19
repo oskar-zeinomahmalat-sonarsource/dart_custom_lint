@@ -163,6 +163,24 @@ void main() {
             currentDirectory: app,
             supportsAnsiEscapes: ansi,
           );
+
+          if (format == 'json') {
+            expect(process.stdout, '''
+{"version":1,"diagnostics":[]}
+''');
+          } else {
+            expect(
+              process.stdout,
+              '''
+Analyzing...
+
+No issues found!
+''',
+            );
+          }
+
+          expect(process.stderr, isEmpty);
+          expect(process.exitCode, 0);
         });
 
         test('CLI lists warnings from all plugins and set exit code', () async {
@@ -184,20 +202,25 @@ void main() {
             (out, err) async {
               await cli.entrypoint(['--format', format]);
 
-              final dir = IOOverrides.current!.getCurrentDirectory().path;
-              expect(err, emitsDone);
-              expect(
-                out.join(),
-                completion(
-                  allOf(
-                    matches(
-                      progressMessage(
-                        supportsAnsiEscapes: ansi,
-                      ),
-                    ),
-                    format == 'json'
-                        ? endsWith('${jsonLints(dir)}\n')
-                        : endsWith('''
+          final out = process.stdout.map(utf8.decode);
+          final err = process.stderr.map(utf8.decode);
+
+          expect(err, emitsDone);
+
+          if (format == 'json') {
+            expect(
+              out.join(),
+              completion(
+                equals('${jsonLints(app.resolveSymbolicLinksSync())}\n'),
+              ),
+            );
+          } else {
+            expect(
+              out.join(),
+              completion(
+                allOf(
+                  startsWith('Analyzing...'),
+                  endsWith('''
   lib/another.dart:1:6 • Hello world • hello_world • INFO
   lib/another.dart:1:6 • Oy • oy • INFO
   lib/main.dart:1:6 • Hello world • hello_world • INFO
@@ -205,14 +228,11 @@ void main() {
 
 4 issues found.
 '''),
-                  ),
                 ),
-              );
-              expect(exitCode, 1);
-            },
-            currentDirectory: app,
-            supportsAnsiEscapes: ansi,
-          );
+              ),
+            );
+          }
+          expect(await process.exitCode, 1);
         });
       });
     }
