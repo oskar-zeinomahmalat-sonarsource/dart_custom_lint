@@ -814,11 +814,11 @@ class LinterVisitor extends GeneralizingAstVisitor<void> {
     super.visitNullAssertPattern(node);
   }
 
-  @override
+  /*@override
   void visitNullAwareElement(NullAwareElement node) {
     _runSubscriptions(node, _registry._forNullAwareElement);
     super.visitNullAwareElement(node);
-  }
+  }*/
 
   @override
   void visitNullCheckPattern(NullCheckPattern node) {
@@ -2157,12 +2157,12 @@ class NodeLintRegistry {
         .add(_Subscription(listener, _getTimer(key), Zone.current));
   }
 
-  final List<_Subscription<NullAwareElement>> _forNullAwareElement = [];
+  /*final List<_Subscription<NullAwareElement>> _forNullAwareElement = [];
   void addNullAwareElement(
       String key, void Function(NullAwareElement node) listener) {
     _forNullAwareElement
         .add(_Subscription(listener, _getTimer(key), Zone.current));
-  }
+  }*/
 
   final List<_Subscription<NullCheckPattern>> _forNullCheckPattern = [];
   void addNullCheckPattern(
@@ -3361,10 +3361,10 @@ class LintRuleNodeRegistry {
     nodeLintRegistry.addNullAssertPattern(name, listener);
   }
 
-  @preferInline
+  /*@preferInline
   void addNullAwareElement(void Function(NullAwareElement node) listener) {
     nodeLintRegistry.addNullAwareElement(name, listener);
-  }
+  }*/
 
   @preferInline
   void addNullCheckPattern(void Function(NullCheckPattern node) listener) {
