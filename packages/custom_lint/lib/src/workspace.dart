@@ -3,8 +3,7 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:analyzer_plugin/protocol/protocol_generated.dart'
-    as analyzer_plugin;
+import 'package:analyzer_plugin/protocol/protocol_generated.dart' as analyzer_plugin;
 import 'package:async/async.dart';
 import 'package:collection/collection.dart';
 import 'package:custom_lint_core/custom_lint_core.dart';
@@ -30,7 +29,7 @@ String _buildDependencyConstraint(
       return ' ${sharedConstraint.getDisplayString()}';
     case PathDependency():
       // Use appropriate path separators across platforms
-      final path = posix.prettyUri(sharedConstraint.path);
+      final path = posix.prettyUri(absolute(workingDirectory.path, sharedConstraint.path));
       return '\n    path: "$path"';
     case SdkDependency():
       return '\n    sdk: ${sharedConstraint.sdk}';
@@ -185,11 +184,8 @@ class IncompatibleDependencyConstraintsException implements Exception {
       'The ${kind.kindDisplayString} "${kind.value}" has incompatible version constraints in the project:\n',
     );
 
-    for (final DependencyConstraintMeta(
-          dependencyDisplayString: dependency,
-          :projectName,
-          :projectPath
-        ) in conflictingDependencies) {
+    for (final DependencyConstraintMeta(dependencyDisplayString: dependency, :projectName, :projectPath)
+        in conflictingDependencies) {
       buffer.write('''
 - $dependency
   from "$projectName" at "${join(projectPath, fileName)}".
@@ -351,10 +347,7 @@ class CustomLintWorkspace {
     List<String> paths, {
     required Directory workingDirectory,
   }) async {
-    final distinctRoots = paths
-        .map((e) => normalize(absolute(e, workingDirectory.path)))
-        .expand(_findRoots)
-        .toSet();
+    final distinctRoots = paths.map((e) => normalize(absolute(e, workingDirectory.path))).expand(_findRoots).toSet();
     final foundRoots = await Future.wait(
       distinctRoots.map((rootPath) async {
         final projectDir = tryFindProjectDirectory(Directory(rootPath));
@@ -387,8 +380,7 @@ class CustomLintWorkspace {
               e.$1,
               [
                 for (final otherPath in foundRoots)
-                  if (otherPath != null && isWithin(e.$1, otherPath.$1))
-                    otherPath.$1,
+                  if (otherPath != null && isWithin(e.$1, otherPath.$1)) otherPath.$1,
               ],
               optionsFile: e.optionsFile,
             ),
@@ -420,12 +412,10 @@ class CustomLintWorkspace {
   }) async {
     final cache = CustomLintPluginCheckerCache();
     final projects = await Future.wait([
-      for (final contextRoot in contextRoots)
-        CustomLintProject.parse(contextRoot, cache, workingDirectory),
+      for (final contextRoot in contextRoots) CustomLintProject.parse(contextRoot, cache, workingDirectory),
     ]);
 
-    final uniquePluginNames =
-        projects.expand((e) => e.plugins).map((e) => e.name).toSet();
+    final uniquePluginNames = projects.expand((e) => e.plugins).map((e) => e.name).toSet();
 
     final realProjects = projects.where((e) => e.isProjectRoot).toList();
 
@@ -438,9 +428,7 @@ class CustomLintWorkspace {
   }
 
   /// Whether the workspace is using flutter.
-  bool get isUsingFlutter => projects
-      .expand((e) => e.packageConfig.packages)
-      .any((e) => e.name == 'flutter');
+  bool get isUsingFlutter => projects.expand((e) => e.packageConfig.packages).any((e) => e.name == 'flutter');
 
   /// The working directory of the workspace.
   /// This is the directory from which the workspace was initialized.
@@ -474,9 +462,7 @@ publish_to: 'none'
   }
 
   void _writeEnvironment(StringBuffer buffer) {
-    final environmentKeys = projects
-        .expand((e) => e.pubspec.environment?.keys ?? <String>[])
-        .toSet();
+    final environmentKeys = projects.expand((e) => e.pubspec.environment?.keys ?? <String>[]).toSet();
 
     if (environmentKeys.isEmpty) return;
 
@@ -534,10 +520,8 @@ publish_to: 'none'
             final dependency = pubspec.dependencies[name];
             final devDependency = pubspec.devDependencies[name];
             return [
-              if (dependency != null)
-                dependency,
-              if (devDependency != null)
-                devDependency,
+              if (dependency != null) dependency,
+              if (devDependency != null) devDependency,
             ];
           }).toList(),
           dependencyOverrides: pluginOwnerPubspecs
@@ -586,17 +570,14 @@ publish_to: 'none'
       buffer,
       dependencyOverrides: {
         for (final entry in dependenciesByName.entries)
-          if (entry.value.dependencyOverrides.isNotEmpty)
-            entry.key: entry.value.dependencyOverrides,
+          if (entry.value.dependencyOverrides.isNotEmpty) entry.key: entry.value.dependencyOverrides,
       },
     );
   }
 
   void _writeDependencyOverrides(
     StringBuffer buffer, {
-    required Map<String,
-            List<Dependency>>
-        dependencyOverrides,
+    required Map<String, List<Dependency>> dependencyOverrides,
   }) {
     var didWriteDependencyOverridesHeader = false;
     for (final entry in dependencyOverrides.entries) {
@@ -783,8 +764,7 @@ class PackageConfigParseError extends Error {
   final StackTrace errorStackTrace;
 
   @override
-  String toString() =>
-      'Failed to decode .dart_tool/package_config.json at $path. '
+  String toString() => 'Failed to decode .dart_tool/package_config.json at $path. '
       'Make sure to run `pub get` first.\n'
       '$error\n'
       '$errorStackTrace';
@@ -871,8 +851,7 @@ class CustomLintProject {
         ...workingDirProjectPubspec.dependencies,
         ...workingDirProjectPubspec.devDependencies,
       }.entries.map((e) async {
-        final packageWithName = projectPackageConfig.packages
-            .firstWhereOrNull((p) => p.name == e.key);
+        final packageWithName = projectPackageConfig.packages.firstWhereOrNull((p) => p.name == e.key);
         if (packageWithName == null) {
           throw PluginNotFoundInPackageConfigError._(e.key, directory.path);
         }
@@ -984,20 +963,16 @@ abstract class PubspecDependency {
   const PubspecDependency._();
 
   /// A dependency using `git`
-  factory PubspecDependency.fromGitDependency(GitDependency dependency) =
-      GitPubspecDependency;
+  factory PubspecDependency.fromGitDependency(GitDependency dependency) = GitPubspecDependency;
 
   /// A path dependency.
-  factory PubspecDependency.fromPathDependency(PathDependency dependency) =
-      PathPubspecDependency;
+  factory PubspecDependency.fromPathDependency(PathDependency dependency) = PathPubspecDependency;
 
   /// A dependency using `hosted` (pub.dev)
-  factory PubspecDependency.fromHostedDependency(HostedDependency dependency) =
-      HostedPubspecDependency;
+  factory PubspecDependency.fromHostedDependency(HostedDependency dependency) = HostedPubspecDependency;
 
   /// A dependency using `sdk`
-  factory PubspecDependency.fromSdkDependency(SdkDependency dependency) =
-      SdkPubspecDependency;
+  factory PubspecDependency.fromSdkDependency(SdkDependency dependency) = SdkPubspecDependency;
 
   /// Automatically converts any [Dependency] into a [PubspecDependency].
   factory PubspecDependency.fromDependency(Dependency dependency) {
@@ -1075,8 +1050,7 @@ class PathPubspecDependency extends PubspecDependency {
 
   @override
   bool isCompatibleWith(PubspecDependency dependency) {
-    return dependency is PathPubspecDependency &&
-        this.dependency.path == dependency.dependency.path;
+    return dependency is PathPubspecDependency && this.dependency.path == dependency.dependency.path;
   }
 
   @override
@@ -1130,8 +1104,7 @@ class SdkPubspecDependency extends PubspecDependency {
 
   @override
   bool isCompatibleWith(PubspecDependency dependency) {
-    return dependency is SdkPubspecDependency &&
-        this.dependency.sdk == dependency.dependency.sdk;
+    return dependency is SdkPubspecDependency && this.dependency.sdk == dependency.dependency.sdk;
   }
 
   @override
