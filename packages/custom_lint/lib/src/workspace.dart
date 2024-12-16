@@ -347,7 +347,7 @@ class CustomLintWorkspace {
     List<String> paths, {
     required Directory workingDirectory,
   }) async {
-    final distinctRoots = paths.map((e) => normalize(absolute(e, workingDirectory.path))).expand(_findRoots).toSet();
+    final distinctRoots = paths.map((e) => normalize(absolute(workingDirectory.path, e))).expand(_findRoots).toSet();
     final foundRoots = await Future.wait(
       distinctRoots.map((rootPath) async {
         final projectDir = tryFindProjectDirectory(Directory(rootPath));
@@ -851,7 +851,7 @@ class CustomLintProject {
         ...workingDirProjectPubspec.dependencies,
         ...workingDirProjectPubspec.devDependencies,
       }.entries.map((e) async {
-        final packageWithName = projectPackageConfig.packages.firstWhereOrNull((p) => p.name == e.key);
+        final packageWithName = workingDirProjectPackageConfig.packages.firstWhereOrNull((p) => p.name == e.key);
         if (packageWithName == null) {
           throw PluginNotFoundInPackageConfigError._(e.key, directory.path);
         }
