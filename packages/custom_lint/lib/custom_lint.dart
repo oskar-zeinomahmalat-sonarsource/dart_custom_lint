@@ -37,6 +37,7 @@ q: Quit
 Future<void> customLint({
   bool watchMode = true,
   required Directory workingDirectory,
+  required Directory targetDirectory,
   bool fatalInfos = true,
   bool fatalWarnings = true,
   OutputFormatEnum format = OutputFormatEnum.plain,
@@ -51,6 +52,7 @@ Future<void> customLint({
       channel,
       watchMode: watchMode,
       workingDirectory: workingDirectory,
+      targetDirectory: targetDirectory,
       fatalInfos: fatalInfos,
       fatalWarnings: fatalWarnings,
       format: format,
@@ -67,6 +69,7 @@ Future<void> _runServer(
   ServerIsolateChannel channel, {
   required bool watchMode,
   required Directory workingDirectory,
+  required Directory targetDirectory,
   required bool fatalInfos,
   required bool fatalWarnings,
   required OutputFormatEnum format,
@@ -88,7 +91,7 @@ Future<void> _runServer(
 
     try {
       final workspace = await CustomLintWorkspace.fromPaths(
-        [workingDirectory.path],
+        [targetDirectory.path],
         workingDirectory: workingDirectory,
       );
       runner = CustomLintRunner(customLintServer, workspace, channel);

@@ -228,7 +228,7 @@ class CustomLintPluginClient {
                 pubspec.devDependencies.containsKey(pluginName) ||
                 pubspec.dependencyOverrides.containsKey(pluginName);
 
-        if (isPluginEnabledInContext) {
+        if (true) {
           final contextRootsForPlugin =
               _contextRootsForPlugin[pluginName] ??= [];
           contextRootsForPlugin.add(analysisContext.contextRoot);

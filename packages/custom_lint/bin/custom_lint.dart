@@ -49,6 +49,11 @@ Future<void> entrypoint([List<String> args = const []]) async {
       abbr: 'h',
       negatable: false,
       help: 'Prints command usage',
+    )
+    ..addOption(
+      'directory',
+      abbr: 'd',
+      help: 'The directory to lint',
     );
   final result = parser.parse(args);
 
@@ -64,9 +69,13 @@ Future<void> entrypoint([List<String> args = const []]) async {
   final fatalInfos = result['fatal-infos'] as bool;
   final fatalWarnings = result['fatal-warnings'] as bool;
   final format = result['format'] as String;
+  final targetDirectory = result['directory'] == null
+      ? Directory.current
+      : Directory(result['directory'] as String);
 
   await customLint(
     workingDirectory: Directory.current,
+    targetDirectory: targetDirectory,
     watchMode: watchMode,
     fatalInfos: fatalInfos,
     fatalWarnings: fatalWarnings,

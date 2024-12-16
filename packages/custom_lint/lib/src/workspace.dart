@@ -20,94 +20,11 @@ import 'package:yaml/yaml.dart';
 /// used in the workspace.
 String _buildDependencyConstraint(
   String name,
-  List<({CustomLintProject project, Dependency dependency})> dependencies, {
+  List<Dependency> dependencies, {
   required Directory workingDirectory,
   required String fileName,
 }) {
-  // We can't pick the "first" then use .skip(1) because the pattern match
-  // may transform the shared constraint. Such as modifying path dependencies
-  // to all use absolute paths.
-  Dependency? sharedConstraint;
-  for (final (:project, :dependency) in dependencies) {
-    final dependencyMeta = dependencies.map(
-      (d) => DependencyConstraintMeta.fromDependency(
-        d.dependency,
-        d.project,
-        workingDirectory: workingDirectory,
-      ),
-    );
-
-    Never throws() => throw IncompatibleDependencyConstraintsException(
-          ConflictKind.dependency(name),
-          dependencyMeta.toList(),
-          fileName: fileName,
-        );
-
-    switch ((dependency: dependency, constraint: sharedConstraint)) {
-      case (
-          :final HostedDependency dependency,
-          :final HostedDependency? constraint,
-        ):
-        sharedConstraint = dependency;
-
-        if (constraint == null) continue;
-
-        if (constraint.hosted?.declaredName !=
-                dependency.hosted?.declaredName ||
-            constraint.hosted?.url != dependency.hosted?.url) {
-          throws();
-        }
-
-        final newConstraint = constraint.version.intersect(dependency.version);
-        if (newConstraint.isEmpty) throws();
-
-        sharedConstraint = HostedDependency(
-          version: newConstraint,
-          hosted: constraint.hosted,
-        );
-
-      case (
-          :final PathDependency dependency,
-          :final PathDependency? constraint,
-        ):
-        final absoluteDependencyPath = normalize(
-          absolute(
-            project.directory.path,
-            dependency.path,
-          ),
-        );
-        sharedConstraint = PathDependency(absoluteDependencyPath);
-
-        if (constraint == null) continue;
-        if (constraint.path != absoluteDependencyPath) throws();
-
-      case (
-          :final SdkDependency dependency,
-          :final SdkDependency? constraint,
-        ):
-        sharedConstraint = dependency;
-
-        if (constraint == null) continue;
-        if (constraint.sdk != dependency.sdk) throws();
-
-      case (
-          :final GitDependency dependency,
-          :final GitDependency? constraint,
-        ):
-        sharedConstraint = dependency;
-
-        if (constraint == null) continue;
-        if (constraint.url != dependency.url ||
-            constraint.path != dependency.path ||
-            constraint.ref != dependency.ref) {
-          throws();
-        }
-
-      default:
-        throws();
-    }
-  }
-
+  final sharedConstraint = dependencies[0];
   switch (sharedConstraint) {
     case HostedDependency():
       return ' ${sharedConstraint.getDisplayString()}';
@@ -504,7 +421,7 @@ class CustomLintWorkspace {
     final cache = CustomLintPluginCheckerCache();
     final projects = await Future.wait([
       for (final contextRoot in contextRoots)
-        CustomLintProject.parse(contextRoot, cache),
+        CustomLintProject.parse(contextRoot, cache, workingDirectory),
     ]);
 
     final uniquePluginNames =
@@ -603,30 +520,31 @@ publish_to: 'none'
 
   void _writePubspecDependencies(StringBuffer buffer) {
     // Collect all the dependencies for each package.
-    final uniqueDependencyNames = projects.expand((e) sync* {
-      yield* e.pubspec.dependencies.keys;
-      yield* e.pubspec.devDependencies.keys;
-      yield* e.pubspec.dependencyOverrides.keys;
+    final pluginOwnerPubspecs = projects.expand((p) => p.plugins.map((e) => e.ownerPubspec));
+    final uniqueDependencyNames = pluginOwnerPubspecs.expand((e) sync* {
+      yield* e.dependencies.keys;
+      yield* e.devDependencies.keys;
+      yield* e.dependencyOverrides.keys;
     }).toSet();
 
     final dependenciesByName = {
       for (final name in uniqueDependencyNames)
         name: (
-          dependencies: projects.expand((project) {
-            final dependency = project.pubspec.dependencies[name];
-            final devDependency = project.pubspec.devDependencies[name];
+          dependencies: pluginOwnerPubspecs.expand((pubspec) {
+            final dependency = pubspec.dependencies[name];
+            final devDependency = pubspec.devDependencies[name];
             return [
               if (dependency != null)
-                (project: project, dependency: dependency),
+                dependency,
               if (devDependency != null)
-                (project: project, dependency: devDependency),
+                devDependency,
             ];
           }).toList(),
-          dependencyOverrides: projects
-              .map((project) {
-                final dependency = project.pubspec.dependencyOverrides[name];
+          dependencyOverrides: pluginOwnerPubspecs
+              .map((pubspec) {
+                final dependency = pubspec.dependencyOverrides[name];
                 if (dependency == null) return null;
-                return (project: project, dependency: dependency);
+                return dependency;
               })
               .nonNulls
               .toList(),
@@ -677,7 +595,7 @@ publish_to: 'none'
   void _writeDependencyOverrides(
     StringBuffer buffer, {
     required Map<String,
-            List<({Dependency dependency, CustomLintProject project})>>
+            List<Dependency>>
         dependencyOverrides,
   }) {
     var didWriteDependencyOverridesHeader = false;
@@ -724,10 +642,10 @@ publish_to: 'none'
 
     final buffer = StringBuffer();
 
-    _writeDependencyOverrides(
-      buffer,
-      dependencyOverrides: dependenciesByName,
-    );
+    // _writeDependencyOverrides(
+    //   buffer,
+    //   dependencyOverrides: dependenciesByName,
+    // );
 
     return buffer.toString();
   }
@@ -738,12 +656,12 @@ publish_to: 'none'
     Directory tempDir,
   ) async {
     final pubspecContent = computePubspec();
-    final pubspecOverride = computePubspecOverride();
+    // final pubspecOverride = computePubspecOverride();
 
     tempDir.pubspec.writeAsStringSync(pubspecContent);
-    if (pubspecOverride != null) {
-      tempDir.pubspecOverrides.writeAsStringSync(pubspecOverride);
-    }
+    // if (pubspecOverride != null) {
+    //   tempDir.pubspecOverrides.writeAsStringSync(pubspecOverride);
+    // }
 
     await runPubGet(tempDir);
   }
@@ -904,6 +822,7 @@ class CustomLintProject {
   static Future<CustomLintProject> parse(
     analyzer_plugin.ContextRoot contextRoot,
     CustomLintPluginCheckerCache cache,
+    Directory workingDirectory,
   ) async {
     final directory = Directory(contextRoot.root);
     final projectDirectory = findProjectDirectory(directory);
@@ -927,10 +846,30 @@ class CustomLintProject {
       );
     });
 
+    final workingDirProject = findProjectDirectory(workingDirectory);
+    final workingDirProjectPubspec = await parsePubspec(workingDirProject).catchError(
+        // ignore: avoid_types_on_closure_parameters, false positive
+        (Object err, StackTrace stack) {
+      throw PubspecParseError._(
+        directory.path,
+        error: err,
+        errorStackTrace: stack,
+      );
+    });
+    final workingDirProjectPackageConfig = await parsePackageConfig(workingDirProject)
+        // ignore: avoid_types_on_closure_parameters, false positive
+        .catchError((Object err, StackTrace stack) {
+      throw PackageConfigParseError._(
+        directory.path,
+        error: err,
+        errorStackTrace: stack,
+      );
+    });
+
     final plugins = await Future.wait(
       {
-        ...projectPubspec.dependencies,
-        ...projectPubspec.devDependencies,
+        ...workingDirProjectPubspec.dependencies,
+        ...workingDirProjectPubspec.devDependencies,
       }.entries.map((e) async {
         final packageWithName = projectPackageConfig.packages
             .firstWhereOrNull((p) => p.name == e.key);
@@ -951,8 +890,8 @@ class CustomLintProject {
           pubspec: pluginPubspec,
           package: packageWithName,
           constraint: PubspecDependency.fromDependency(e.value),
-          ownerPubspec: projectPubspec,
-          ownerPackageConfig: projectPackageConfig,
+          ownerPubspec: workingDirProjectPubspec,
+          ownerPackageConfig: workingDirProjectPackageConfig,
         );
       }),
     );
